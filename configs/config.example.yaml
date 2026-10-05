@@ -27,8 +27,9 @@ api:
 # Web UI configuration
 web:
   enabled: true
-  username: "admin"  # Not used in current version
-  password: "admin123"  # Not used in current version
+  username: "admin"  # Login username for the Web UI (defaults to "admin" if empty)
+  password: "admin123"  # Login password; CHANGE THIS before exposing to the internet.
+                        # Leave empty to disable login (NOT recommended on public networks)
 
 # Logging configuration
 log:

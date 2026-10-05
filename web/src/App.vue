@@ -1,5 +1,6 @@
 <template>
-  <el-container class="app-container">
+  <router-view v-if="$route.meta.public" />
+  <el-container v-else class="app-container">
     <el-aside width="200px" class="sidebar">
       <div class="logo">
         <h2>OpenList-STRM</h2>
@@ -31,6 +32,24 @@
         <div class="header-title">{{ pageTitle }}</div>
         <div class="header-actions">
           <ThemeSwitcher />
+          <el-dropdown
+            v-if="authState.enabled && authState.authenticated"
+            trigger="click"
+            @command="handleUserCommand"
+          >
+            <el-button round class="user-button">
+              <el-icon><UserFilled /></el-icon>
+              <span class="user-name">{{ authState.username }}</span>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="logout">
+                  <el-icon><SwitchButton /></el-icon>
+                  退出登录
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </div>
       </el-header>
       <el-main class="main-content">
@@ -42,10 +61,21 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import ThemeSwitcher from './components/ThemeSwitcher.vue'
+import { authState, logout } from './auth'
 
 const route = useRoute()
+const router = useRouter()
+
+async function handleUserCommand(command) {
+  if (command !== 'logout') return
+  try {
+    await logout()
+  } finally {
+    router.replace('/login')
+  }
+}
 
 const pageTitle = computed(() => {
   const titles = {
@@ -116,6 +146,17 @@ const pageTitle = computed(() => {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.user-button {
+  color: var(--color-text);
+  border-color: rgba(var(--color-primary-rgb), 0.2);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.user-name {
+  margin-left: 6px;
+  font-weight: 600;
 }
 
 .main-content {
