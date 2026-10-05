@@ -15,6 +15,7 @@ type Server struct {
 	scheduler *scheduler.Scheduler
 	db        *storage.DB
 	router    *gin.Engine
+	auth      *authManager
 }
 
 // NewServer creates a new API server
@@ -40,6 +41,7 @@ func NewServer(cfg *config.Config, sched *scheduler.Scheduler, db *storage.DB) *
 		scheduler: sched,
 		db:        db,
 		router:    router,
+		auth:      newAuthManager(cfg),
 	}
 
 	s.setupRoutes()
@@ -52,13 +54,25 @@ func (s *Server) setupRoutes() {
 	// Health check
 	s.router.GET("/health", s.handleHealth)
 
-	// API routes
+	// Auth routes (public)
+	auth := s.router.Group("/api/auth")
+	{
+		auth.POST("/login", s.handleLogin)
+		auth.POST("/logout", s.handleLogout)
+		auth.GET("/status", s.handleAuthStatus)
+	}
+
+	// Webhook is called by external systems and only accepts the API token
+	if s.cfg.API.Token != "" {
+		s.router.POST("/api/webhook", s.tokenAuthMiddleware(), s.handleWebhook)
+	} else {
+		s.router.POST("/api/webhook", s.handleWebhook)
+	}
+
+	// Admin API routes: session cookie or API token
 	api := s.router.Group("/api")
 	{
-		// Apply token auth middleware if token is set
-		if s.cfg.API.Token != "" {
-			api.Use(s.tokenAuthMiddleware())
-		}
+		api.Use(s.adminAuthMiddleware())
 
 		// Task routes
 		api.POST("/generate", s.handleGenerate)
@@ -77,9 +91,6 @@ func (s *Server) setupRoutes() {
 
 		// Cron expression preview
 		api.POST("/cron/preview", s.handleCronPreview)
-
-		// Webhook routes
-		api.POST("/webhook", s.handleWebhook)
 	}
 }
 

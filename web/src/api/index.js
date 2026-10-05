@@ -1,4 +1,6 @@
 import axios from 'axios'
+import router from '../router'
+import { authState, markSessionExpired } from '../auth'
 
 const api = axios.create({
   baseURL: '/api',
@@ -28,6 +30,13 @@ api.interceptors.response.use(
     const backendMsg = error.response?.data?.error || error.response?.data?.message
     if (backendMsg) {
       error.message = backendMsg
+    }
+    if (error.response?.status === 401 && authState.enabled) {
+      markSessionExpired()
+      const current = router.currentRoute.value
+      if (!current.meta.public) {
+        router.replace({ path: '/login', query: { redirect: current.fullPath } })
+      }
     }
     console.error('API Error:', error)
     return Promise.reject(error)
